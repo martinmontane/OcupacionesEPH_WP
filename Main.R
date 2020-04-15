@@ -4,10 +4,13 @@ librerias <- c('data.table','foreign','magrittr','ggplot2','ggthemes','ggraph',
 lapply(librerias, require, character.only=TRUE)
 options(java.parameters = "-Xmx8000m")
 setDTthreads(4)
-source("getEphs.R")
-source('auxiliares.R')
-datos <- getEPHS(dir = 'D:/OneDrive/Documents/Encuesta Permamente de Hogares (EPH-Argentina)/Oficial/')
-clasificadorCAES <- fread("Conversores/caesnuevo4d_caesviejo.csv")
+source("https://raw.githubusercontent.com/martinmontane/EPHelper/master/getEphs.R")
+source('https://raw.githubusercontent.com/martinmontane/EPHelper/master/auxiliares.R')
+# Directorio donde guardar las EPHs. Debe existir y tener al menos 3gb de espacio
+# en el disco rígido
+ephDir <- "DirectorioEPH"
+datos <- getEPHS(dir = ephDir)
+clasificadorCAES <- fread("https://raw.githubusercontent.com/martinmontane/EPHelper/master/Clasificadores/Conversores/caesnuevo4d_caesviejo.csv")
 datos <- datos[ESTADO %in% c(1:3) & REGION==1]
 gc()
 datos <- datos[,CAT_ACT:=as.numeric(ifelse(ANO4 >2011 & !is.na(PP04B_CAES),PP04B_CAES,
@@ -21,7 +24,7 @@ datos <- datos[,CAT_ACT := ifelse(ANO4<=2011, PP04B_COD, CAT_ACT)]
 datos <- datos[,CAT_ACT := ifelse(!CAT_ACT %in% clasificadorCAES$CAES_viejo_4d,NA,CAT_ACT)]
 datos <- datos[,CAT_ACT := ifelse(nchar(CAT_ACT)==3,paste0(0,CAT_ACT),CAT_ACT)]
 
-clasificadorCAESLetra <- fread("Conversores/caes_viejo_4d_a_letra.csv", encoding = "UTF-8")
+clasificadorCAESLetra <- fread("https://raw.githubusercontent.com/martinmontane/EPHelper/master/Clasificadores/Conversores/caes_viejo_4d_a_letra.csv", encoding = "UTF-8")
 clasificadorCAESLetra <- clasificadorCAESLetra[nchar(CAES_VIEJO)>2]
 clasificadorCAESLetra <- clasificadorCAESLetra[,CAES_VIEJO:=ifelse(nchar(CAES_VIEJO)==3,paste0('0',CAES_VIEJO), CAES_VIEJO)]
 datos <- datos[clasificadorCAESLetra,on=c('CAT_ACT'='CAES_VIEJO'),
@@ -179,7 +182,7 @@ g_mst <- g_mst %>%
   activate(nodes) %>%
   mutate(Agrupacion = gsub(x=Agrupacion,pattern = '* occupations*',replacement = '')) %>%
   mutate(Agrupacion=as.factor(Agrupacion)) 
-
+ 
 # Strength
 strengthGrafo <- sort(strength(grafo))
 
@@ -192,9 +195,9 @@ strengthGrafo$Descripcion = gsub(x=strengthGrafo$Descripcion,pattern = '* occupa
 strengthGrafo$ocupacion <- factor(strengthGrafo$ocupacion,
                                   levels = strengthGrafo$ocupacion[order(strengthGrafo$strength)])
 flujosOcupacionesVolume <- as.data.table(table(datosOcupaciones$PP04D_COD,
-                                               datosOcupaciones$OCUP_LAG))
+                                         datosOcupaciones$OCUP_LAG))
 flujosOcupacionesVolume <- melt(flujosOcupacionesVolume,
-                                measure.vars = c("V1","V2"))
+                          measure.vars = c("V1","V2"))
 flujosOcupacionesVolume <- flujosOcupacionesVolume[,sum(N),by=value]                          
 strengthGrafo <- strengthGrafo[flujosOcupacionesVolume,
                                ,on=c("ocupacion"="value")]
@@ -230,7 +233,7 @@ dataPlot <- strengthGrafo
 g_plot <- g_mst %>%
   activate(nodes) %>%
   left_join(dataPlot,by=c("name"="ocupacion"))
-
+  
 set.seed(1)
 grafoMST <- ggraph(layout = 'nicely',graph = g_plot) + 
   geom_edge_link(aes(width=weight),show.legend = FALSE, color='grey90') +
@@ -343,24 +346,10 @@ datos <- datos[,distintaOcupacion:= ifelse(!PP04D_COD==OCUP_LAG, TRUE, FALSE)]
 datos <- datos[,distintaActividad:= ifelse(!ACT_LAG==CAT_ACT, TRUE, FALSE)]
 
 # Distintas  maneras de medir la distancia entre ocupaciones
-gruposDistancia <- c('fullSample','Asalariados','AsalariadosRegistrados', 'FullTime') 
 listaModelos <- list()
-for(gruposDist in gruposDistancia) {
-  
-  if(gruposDist == 'fullSample') {
-    datosOcupacion <- datosOcupaciones
-    datosIndustria <- datos
-  } else if(gruposDist == 'Asalariados') {
-    datosOcupacion <- datosOcupaciones[CAT_OCUP %in% c('Asalariado registrado','Asalariado no registrado') & CAT_OCUP_LAG %in% c('Asalariado registrado','Asalariado no registrado')]
-    datosIndustria <- datos[CAT_OCUP %in% c('Asalariado registrado','Asalariado no registrado') & CAT_OCUP_LAG %in% c('Asalariado registrado','Asalariado no registrado')]
-  } else if(gruposDist == 'AsalariadosRegistrados') {
-    datosOcupacion <- datosOcupaciones[CAT_OCUP %in% c('Asalariado registrado') & CAT_OCUP_LAG %in% c('Asalariado registrado')]
-    datosIndustria <- datos[CAT_OCUP %in% c('Asalariado registrado') & CAT_OCUP_LAG %in% c('Asalariado registrado')]
-  } else {
-    datosOcupacion <- datosOcupacion[PP3E_TOT < 35 & H_LAG <35]
-    datosIndustria <- datos[PP3E_TOT < 35 & H_LAG <35]
-  }
-  
+datosOcupacion <- datosOcupaciones
+datosIndustria <- datos
+
   
   flujosOcupaciones <- as.data.table(table(datosOcupaciones$PP04D_COD,
                                            datosOcupaciones$OCUP_LAG))
@@ -382,24 +371,7 @@ for(gruposDist in gruposDistancia) {
   
   
   # Medida de distancia basada en las trayectorias de los que pasaron por desempleo / inactividad
-  flujosOcupacionesUnemployed <- as.data.table(table(datosOcupaciones$PP04D_COD[datosOcupaciones$UNEM_TRANS],
-                                                     datosOcupaciones$OCUP_LAG[datosOcupaciones$UNEM_TRANS]))
-  flujosOcupacionesUnemployed <- getDistanceMeasureProduccion(sectorSalida = flujosOcupacionesUnemployed$V2,
-                                                              sectorLlegada = flujosOcupacionesUnemployed$V1,
-                                                              flow = flujosOcupacionesUnemployed$N)
-  datos <- datos[flujosOcupacionesUnemployed, on=c('OCUP_LAG'='sectorSalida',
-                                                   'PP04D_COD'='sectorLlegada'),
-                 RijOcupacionesUnem:=i.RijCorregido]
-  flujosActividadesUnemployed <- as.data.table(table(datosIndustria$CAT_ACT[datosIndustria$UNEM_TRANS],
-                                                     datosIndustria$ACT_LAG[datosIndustria$UNEM_TRANS]))
-  flujosActividadesUnemployed <- getDistanceMeasureProduccion(sectorSalida = flujosActividadesUnemployed$V2,
-                                                              sectorLlegada = flujosActividadesUnemployed$V1,
-                                                              flow = flujosActividadesUnemployed$N)
-  datos <- datos[flujosActividadesUnemployed, on=c('CAT_ACT'='sectorSalida',
-                                                   'ACT_LAG'='sectorLlegada'),
-                 RijActividadUnem:=i.RijCorregido]
-  
-  
+
   # Medida de distancia basada en las trayectorias de los que NO pasaron por desempleo / inactividad
   
   flujosOcupacionesEmployed <- as.data.table(table(datosOcupaciones$PP04D_COD[!(datosOcupaciones$UNEM_TRANS == TRUE) & datosOcupaciones$CAT_OCUP %in% c('Asalariado registrado') & datosOcupaciones$CAT_OCUP_LAG %in% c('Asalariado registrado')],
@@ -422,30 +394,17 @@ for(gruposDist in gruposDistancia) {
                  RijActividadEmp:=i.RijCorregido]
   
   # Regresiones
-  formulas <- cbind(expand.grid(c('variacionReal','variacionRealTrimestral'),
-                                c('RijOcupaciones','RijOcupacionesUnem','RijOcupacionesEmp'),
-                                c('RijActividad','RijActividadUnem','RijActividadEmp')))
+  formulas <- cbind(expand.grid(c('variacionRealTrimestral'),
+                                c('RijOcupaciones','RijOcupacionesEmp'),
+                                c('RijActividad','RijActividadEmp')))
+  formulas <- formulas[c(1,4),]
   formulas <- paste(formulas$Var1,'~',formulas$Var2,'+',formulas$Var3,'+ SECTOR_ABOVE_AVG_LAG + CAT_OCUP_LAG + ANO4 + SECTOR_ABOVE_AVG + CAT_OCUP')
   
-  names(formulas) <- c('VarReal_RijOcup_RijAct','VarRealTrim_RijOcup_RijAct',
-                       'VarReal_RijOcupUnem_RijAct','VarRealTrim_RijOcupUnem_RijAct',
-                       'VarReal_RijOcupEmp_RijAct','VarRealTrim_RijOcupEmp_RijAct',
-                       'VarReal_RijOcup_RijActUnem','VarRealTrim_RijOcup_RijActUnem',
-                       'VarReal_RijOcupUnem_RijActUnem','VarRealTrim_RijOcupUnem_RijActUnem',
-                       'varReal_RijOcupEmp_RijActUnem','varRealTrim_RijOcupEmp_RijActUnem',
-                       'varReal_RijOcup_RijActEmp','varRealTrim_RijOcup_RijActEmp',
-                       'varReal_RijOcupUnem_RijActEmp','varRealTrim_RijOcupUnem_RijActEmp',
-                       'varReal_RijOcupEmp_RijActEmp','varRealTrim_RijOcupEmp_RijActEmp')
+  names(formulas) <- c('VarRealTrim_RijOcup_RijAct',
+                       'varRealTrim_RijOcupEmp_RijActEmp')
   
   
-  grupos <- list('partTime'='datos[PP3E_TOT < 35 & H_LAG <35 ]',
-                 'fullTime'='datos[PP3E_TOT>=35 & H_LAG >=35]',
-                 'partTimeUnem'='datos[PP3E_TOT<35 & H_LAG <35 & UNEM_TRANS==TRUE]',
-                 'fullTimeUnem'='datos[PP3E_TOT>=35 & H_LAG >=35 & UNEM_TRANS==TRUE]',
-                 'partTimeEmp'='datos[PP3E_TOT<35 & H_LAG <35 & !UNEM_TRANS==TRUE]',
-                 'fullTimeEmp'='datos[PP3E_TOT>=35 & H_LAG >=35 & !UNEM_TRANS==TRUE]',
-                 'pooled'='datos',
-                 'pooledUnem'='datos[UNEM_TRANS==TRUE]',
+  grupos <- list('pooled'='datos',
                  'pooledEmp'='datos[!UNEM_TRANS==TRUE]')
   
   regresiones <- lapply(formulas,function(x){
@@ -478,21 +437,13 @@ for(gruposDist in gruposDistancia) {
   
   modelo  <- rep(names(salida),sapply(salida,function(x) nrow(x)))
   
-  salida <- rbindlist(salida)
-  salida$modelo <- modelo
-  salida$grupoDistancia <- gruposDist
-  listaModelos <- c(listaModelos,list(salida))
-}
-listaModelos <- rbindlist(listaModelos)
-listaModelos <- listaModelos[modelo %in% c('VarRealTrim_RijOcup_RijAct',
-                                           'varRealTrim_RijOcupEmp_RijActEmp',
-                                           'VarRealTrim_RijOcupUnem_RijActUnem')]
-listaModelos <- listaModelos[,grupoDistancia:=ifelse(modelo=='VarReal_RijOcup_RijAct',grupoDistancia,
-                                                     ifelse(modelo=='varRealTrim_RijOcupEmp_RijActEmp',paste(grupoDistancia,'Emp',sep=''),
-                                                            ifelse(modelo=='VarRealTrim_RijOcupUnem_RijActUnem',paste(grupoDistancia,'Unem',sep=''),grupoDistancia)))]
+  listaModelos <- rbindlist(salida)
+  listaModelos$modelo <- modelo
 
-coeficientePlot  <- ggplot(data=listaModelos[grepl('*RijOcc*',term) & grupo %in% c("pooled","pooledEmp","pooledUnem")],
-                           aes(x = grupoDistancia,y = estimate, ymin = lb, ymax = ub))+
+
+
+coeficientePlot  <- ggplot(data=listaModelos[grepl('*RijOcc*',term) ],
+                           aes(x = grupo,y = estimate, ymin = lb, ymax = ub))+
   geom_pointrange()+
   geom_hline(yintercept =0, linetype=2) +
   xlab('Variables Dependientes')+ ylab("Coeficiente asociado a la similitud entre ocupaciones\nIntervalo de 90% de confianza")+
@@ -503,30 +454,7 @@ coeficientePlot  <- ggplot(data=listaModelos[grepl('*RijOcc*',term) & grupo %in%
         axis.ticks.y=element_blank(),
         axis.text=element_text(color='black'),
         strip.text.y = element_text(hjust=0,vjust = 0.5,angle=180))  +
-  facet_grid(grupoDistancia~ grupo,scales = 'free',switch ="y")
+  facet_grid(modelo~ grupo,scales = 'free',switch ="y")
 
 ggsave(filename = 'png/coeficientesPlot.png',dpi=300,scale=1.8,coeficientePlot) 
 ggsave(filename = 'svg/coeficientesPlot.svg',dpi=300,scale=1.8,coeficientePlot) 
-# listaModelos[grepl('*RijOcc*|*RijAct*|R2',term) & grupo %in% c("pooled","pooledEmp","pooledUnem") & grupoDistancia %in% c("fullSample","fullSampleEmp","fullSampleUnem")]
-
-grupos <- list("pooled"="datos","pooledEmp"="datos[!UNEM_TRANS==TRUE]","pooledUnem"="datos[UNEM_TRANS==TRUE]")
-distancia <- list("pooled"="variacionRealTrimestral ~ RijOcupaciones + RijActividad + SECTOR_ABOVE_AVG_LAG + CAT_OCUP_LAG + ANO4 + SECTOR_ABOVE_AVG + CAT_OCUP",
-                  "pooledEmp"="variacionRealTrimestral ~ RijOcupacionesEmp + RijActividadEmp + SECTOR_ABOVE_AVG_LAG + CAT_OCUP_LAG + ANO4 + SECTOR_ABOVE_AVG + CAT_OCUP",
-                  "pooledUnem"="variacionRealTrimestral ~ RijOcupacionesUnem + RijActividadUnem + SECTOR_ABOVE_AVG_LAG + CAT_OCUP_LAG + ANO4 + SECTOR_ABOVE_AVG + CAT_OCUP")
-regresiones <- lapply(grupos,
-                      function(x){
-                        lapply(distancia,function(y){
-                          tidyRegOutput(lm(data=eval(parse(text=x)),
-                                           formula = as.formula(y)),coef.int=0.9)
-                        })
-                      })
-
-for(i in 1:length(regresiones)) {
-  for(j in 1:length(regresiones[[i]])) {
-    xlsx::write.xlsx(file = "RegresionesSalida.xlsx",
-                     x = as.data.table(regresiones[[i]][[j]]),
-                     sheetName = paste0('G_',names(regresiones)[i],'_D_',names(regresiones[[i]])[j]),
-                     row.names = FALSE,
-                     append = TRUE)
-  }
-}
