@@ -204,6 +204,7 @@ getDistanceMeasure <- function(sectorSalida,sectorLlegada,flow,method='neffke201
   }
 }
 
+<<<<<<< HEAD
 # This function calculates the distance between two groups based on the flow
 # that is observed and comparing it to a "no attraction" benchmark.
 # Currently implements neffke et al (2017) 
@@ -274,4 +275,37 @@ getDistanceMeasureProduccion <- function(sectorSalida,
   colnames(flujos) <- c('sectorSalida','sectorLlegada','flow')
   dt <- dt[flujos,on=c("sectorSalida","sectorLlegada")]
   return(dt)
+=======
+getDistanceMeasureProduccion <- function(sectorSalida,sectorLlegada,flow,method='neffke2017'){
+  if(method=='neffke2017') {
+    dt <- data.table(sectorSalida, sectorLlegada, flow)
+    dt <- dt[!(sectorSalida %in% 'NA' | sectorLlegada %in% 'NA')]
+    dt <- dcast(dt,sectorSalida ~ sectorLlegada,value.var = 'flow')
+    dt <- as.matrix(dt)
+    rowNames <- dt[,1]
+    dt <- dt[,-1]
+    dt <- apply(dt,2,as.numeric)
+    rownames(dt) <- rowNames
+    dt <- fill_matrix(dt,replaceValue = 0) 
+    dt[is.na(dt)] <- 0
+    dt[upper.tri(dt,diag = FALSE)] <- dt[upper.tri(dt,diag = FALSE)] + t(dt)[upper.tri(t(dt),diag = FALSE)]
+    dt <- ( dt*sum(dt) ) / ( outer(rowSums(dt),rowSums(dt), FUN = '*') )
+    dt[lower.tri(dt,diag = FALSE)] <- t(dt)[lower.tri(t(dt),diag = FALSE)]
+    sectores <- rownames(dt)
+    dt <- as.data.table((dt - 1)/(dt + 1))
+    dt$sectorSalida <- sectores
+    dt <- melt(dt,id.vars='sectorSalida')
+    colnames(dt) <- c('sectorSalida','sectorLlegada','RijCorregido')
+    return(dt)
+  } else {
+    dt <- data.table(sectorSalida, sectorLlegada, flow)
+    totalLlegadas <- dt[,list(totalLlegada=sum(flow)),by='sectorLlegada']
+    totalSalidas <- dt[,list(totalSalida=sum(flow)),by='sectorSalida']
+    dt <- dcast(dt,sectorSalida ~ sectorLlegada,value.var = 'flow')
+    dt[,2:ncol(dt)] <-(dt[,-1]*sum(dt[,-1]))/ outer(totalLlegadas$totalLlegada, totalSalidas$totalSalida, FUN = "*")
+    dt[,2:ncol(dt)] <- as.data.table(as.matrix(dt[,2:ncol(dt)] - 1) / as.matrix(dt[,2:ncol(dt)] + 1))
+    dt <- melt(dt,id.vars = 'sectorSalida',variable.name = 'sectorLlegada',value.name = 'RijCorregido')
+    return(dt)
+  }
+>>>>>>> 40cad4eeafd7eaf79d95850672e34fc90d348955
 }

@@ -84,7 +84,11 @@ getEPHS <- function(years=c(2003:2019),
                             pattern = '*hog',ignore.case = TRUE)
     }
     
+<<<<<<< HEAD
     ephsDescargadas <- tolower(regmatches(archivos,regexpr('(?i)t[0-9]{3}',archivos)))
+=======
+    ephsDescargadas <- tolower(regmatches(archivos,regexpr('(?i)t\\d{3}',archivos)))
+>>>>>>> 40cad4eeafd7eaf79d95850672e34fc90d348955
     ephsFaltantes <- ephsDisponibles[!nickname %in% ephsDescargadas]
     if(nrow(ephsFaltantes)==0){
       cat("Todas los microdatos de la EPH ya están descargadas en el directorio\r")
