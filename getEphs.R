@@ -6,7 +6,7 @@ getEPHS <- function(years=c(2003:2019),
   if (!is.loaded("data.table")) library(data.table)
   if (!is.loaded("foreign")) library(foreign)
   
-  ephsDisponibles <- data.table(year=c(rep(2003,2),rep(2004:2006,each=4),rep(2007,3),rep(2008:2014,each=4),rep(2015,2),rep(2016,3),rep(2017:2018,each=4),rep(2019,3)),
+  ephsDisponibles <- data.table(year=c(rep(2003,2),rep(2004:2006,each=4),rep(2007,3),rep(2008:2014,each=4),rep(2015,2),rep(2016,3),rep(2017:2018,each=4),rep(2019,4)),
                                 trim=c(3,4,rep(1:4,3),1,2,4,rep(1:4,7),1,2,2,3,4,rep(1:4,2),1,2,3),
                                 linkDescarga=c('https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/t303_dta.zip',
                                                'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/t403_dta.zip',
@@ -68,7 +68,8 @@ getEPHS <- function(years=c(2003:2019),
                                                'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_4_Trim_2018_txt.zip',
                                                'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_1_Trim_2019_txt.zip',
                                                'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_2_Trim_2019_txt.zip',
-                                               'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_3_Trim_2019_txt.zip'))
+                                               'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_3_Trim_2019_txt.zip',
+                                               'https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_4_Trim_2019_txt.zip'))
   
   ephsDisponibles <- ephsDisponibles[year %in% years & trim %in% trims]
   
@@ -84,11 +85,7 @@ getEPHS <- function(years=c(2003:2019),
                             pattern = '*hog',ignore.case = TRUE)
     }
     
-<<<<<<< HEAD
     ephsDescargadas <- tolower(regmatches(archivos,regexpr('(?i)t[0-9]{3}',archivos)))
-=======
-    ephsDescargadas <- tolower(regmatches(archivos,regexpr('(?i)t\\d{3}',archivos)))
->>>>>>> 40cad4eeafd7eaf79d95850672e34fc90d348955
     ephsFaltantes <- ephsDisponibles[!nickname %in% ephsDescargadas]
     if(nrow(ephsFaltantes)==0){
       cat("Todas los microdatos de la EPH ya están descargadas en el directorio\r")
