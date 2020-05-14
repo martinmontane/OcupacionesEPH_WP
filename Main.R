@@ -35,8 +35,8 @@ librerias <-
   )
 p_load(librerias, character.only = TRUE)
 # Get functions that will help us handle the Encuesta Permanente de Hogares (EPH)
-source("https://raw.githubusercontent.com/martinmontane/EPHelper/master/getEphs.R")
-source('https://raw.githubusercontent.com/martinmontane/EPHelper/master/auxiliares.R')
+source("https://raw.githubusercontent.com/martinmontane/OcupacionesEPH_WP/master/getEphs.R",encoding = "UTF-8")
+source('https://raw.githubusercontent.com/martinmontane/OcupacionesEPH_WP/master/auxiliares.R')
 # Directory to save the EPH files. It must exits (function will not create the folders if they do not exist)
 ephDir <-
   "C:/Users/marti/OneDrive/Documents/Encuesta Permamente de Hogares (EPH-Argentina)/Oficial/"
@@ -1617,4 +1617,3 @@ coeficientePlot  <- ggplot(data=listaModelos[grepl('*RijOcc*',term) ],
 
 ggsave(filename = 'png/coeficientesPlot.png',dpi=300,scale=1.8,coeficientePlot) 
 ggsave(filename = 'svg/coeficientesPlot.svg',dpi=300,scale=1.8,coeficientePlot) 
->>>>>>> 40cad4eeafd7eaf79d95850672e34fc90d348955
